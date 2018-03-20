@@ -46,7 +46,9 @@ class App extends Component {
 			body: data
 		})
 		console.log(resp)
-		return resp
+		const respJson = await resp.json()
+		console.log(JSON.stringify(respJson))
+		return respJson.data.translations[0].translatedText
 	}
 	
 	constructor(props){
@@ -66,6 +68,7 @@ class App extends Component {
 				faceEmotionData: [],
 				faceEmotionDataList: [],
 				keywords: [],
+				recommend: "",
 				running : false,
 				support : true,
 				identifiedTextList: [],
@@ -162,6 +165,8 @@ class App extends Component {
 				temp.push(data[i])
 			}
 			this.setState({keywords: temp})
+
+			this.setState({recommend: responseJson[3].recommend})
 
 			return responseJson
 		})
@@ -353,7 +358,7 @@ class App extends Component {
 							</Grid>
 						</Grid>
 					</Grid>
-					<Grid item xs = {12}>
+					<Grid item xs = {6}>
 						<Grid container justify="center" spacing={16}>
 							<Grid item >
 								<Card >
@@ -365,6 +370,19 @@ class App extends Component {
 							</Grid>
 						</Grid>
 					</Grid>
+					<Grid item xs = {6}>
+						<Grid container justify="center" spacing={16}>
+							<Grid item >
+								<Card >
+									<CardContent>
+										<h3>{ this.state.recommend }</h3>
+										<p>Recommendation</p>
+									</CardContent>
+								</Card>
+							</Grid>
+						</Grid>
+					</Grid>
+
 				</Grid>
 				<Modal
 					aria-labelledby="simple-modal-title"
