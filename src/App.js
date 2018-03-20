@@ -4,7 +4,6 @@ import './App.css';
 import { 
 	BarChart,
 	LineChart,
-	PieChart,
 	RadarChart,
     CartesianGrid,
     XAxis,
@@ -31,6 +30,24 @@ import Webcam from 'react-webcam';
 import Person from './components/person'
 
 class App extends Component {
+
+	async getEnglish(str){
+		var data = [] 
+		data.push('q='+ encodeURIComponent(str))
+		data.push('target='+ 'en')
+		data.push('key='+ 'AIzaSyBc8KzDa4Y5wmf0AhIb7LWyXpmm_jaoMME')
+		data = data.join("&");
+		const resp = await fetch('https://translation.googleapis.com/language/translate/v2', {
+			method: 'POST',
+			headers: {
+				'Accept' : 'application/json',
+				'Content-Type': 'application/x-www-form-urlencoded'
+			},
+			body: data
+		})
+		console.log(resp)
+		return resp
+	}
 	
 	constructor(props){
 		super(props)
@@ -70,7 +87,7 @@ class App extends Component {
 				}
 				if (this.state.forceEnd) this.setState({forceEnd: false})
 			}
-			this.recognition.onresult = (event) => {
+			this.recognition.onresult = async (event) => {
 				// event is a SpeechRecognitionEvent object.
 				// It holds all the lines we have captured so far.
 				// We only need the current one.
@@ -82,44 +99,11 @@ class App extends Component {
 				// Add the current transcript to the contents of our Note.
 				var noteContent = ""
 				noteContent += transcript;
+				noteContent = await this.getEnglish(noteContent);
 				this.getEmotion(noteContent).then((result) => console.log(result) )
 				this.setState((prevState) => { identifiedTextList: prevState.identifiedTextList.push(noteContent) })
 			}
 		}
-
-		setInterval(async () => {
-			if (this.state.running){
-				var base64 = this.capture()
-				await fetch('https://nltk-api.herokuapp.com/image', {
-					method: 'POST',
-					headers: {
-						'Accept': 'application/json',
-						'Content-Type': 'application/json',
-					},
-					body: JSON.stringify({
-						"base64": base64
-					})
-				})
-				.then((response) => response.json())
-				.then((responseJson) => {
-					responseJson = JSON.parse(responseJson)
-
-					var data = []
-					for(var prop in responseJson[0].scores) {
-						data.push({
-							"name": prop,
-							"value": responseJson[0].scores[prop]
-						})
-					}
-
-					this.setState({faceEmotionData: data})
-					this.setState((prevState) => {{ faceEmotionDataList: prevState.faceEmotionDataList.push(data) }})
-					// this.setState((prevState) => {{ faceEmotionData: prevState.faceEmotionData.push(responseJson[0].scores) }})
-				})
-				.catch((error) => {
-				})
-			}
-		}, 1000)
 	}
 
 	modalOpen = () => {
@@ -143,7 +127,8 @@ class App extends Component {
 		})
 		.then((response) => response.json())
 		.then((responseJson) => {
-			var data = responseJson[1].probabilities
+			var data = responseJson[1].emotion.probabilities
+			console.log(data)
 			var emotionGraphData = []
 			for (var p in data) {
 				if (data.hasOwnProperty(p)){
@@ -154,6 +139,7 @@ class App extends Component {
 					emotionGraphData.push(temp)
 				}
 			}
+			console.log(emotionGraphData)
 			this.setState({emotionData: emotionGraphData})
 			this.setState((prevState) => {{ emotionDataList: prevState.emotionDataList.push(emotionGraphData) }})
 
@@ -223,20 +209,6 @@ class App extends Component {
 		)
 	}
 
-	renderPieGraph() {
-		return (
-			<BarChart width={600} height={250} data={ this.state.faceEmotionData }>
-				<CartesianGrid strokeDasharray="3 3" />
-				<XAxis dataKey="name" />
-				<YAxis />
-				<Tooltip />
-				<Legend />
-				<Label value="Visual Emotion Analysis" offset={0} position="bottom" />
-				<Bar name="Intensity of Emotion" dataKey="value" fill="#82ca9d" />
-			</BarChart>
-		)
-	}
-
 	renderKeywords(){
 		return (
 			<div>
@@ -252,66 +224,33 @@ class App extends Component {
 		)
 	}
 
-	setWebcamRef = (webcam) => {
-		this.webcam = webcam;
-	}
-	
-	capture = () => {
-		const imageSrc = this.webcam.getScreenshot();
-		return imageSrc
-	}
-
-	renderWebCam(){
-		return (
-			<div>
-				<Webcam
-					audio={false}
-					height={135}
-					ref={this.setWebcamRef}
-					screenshotFormat="image/jpeg"
-					width={150}
-				/>
-			</div>
-		)
-	}
-
 	renderResultGraph(){
-		if (this.state.emotionAverage && this.state.faceAverage){
+		if (this.state.emotionAverage ){
 			var data = []
 			// anger
 			data.push({
 				"name" : "anger",
-				"value" : this.state.emotionAverage.angry*0.5 + this.state.faceAverage.anger*0.5
+				"value" : this.state.emotionAverage.angry
 			})
 			//sad
 			data.push({
 				"name" : "sad",
-				"value" : this.state.emotionAverage.sad*0.5 + this.state.faceAverage.sadness*0.50
+				"value" : this.state.emotionAverage.sad
 			})
 			//neutral
 			data.push({
 				"name" : "neutral",
-				"value" : this.state.emotionAverage.indifferent*0.5 + this.state.faceAverage.neutral*0.5
+				"value" : this.state.emotionAverage.indifferent
 			})
 			//amazed
 			data.push({
 				"name" : "amazed",
-				"value" : this.state.emotionAverage.excited*0.5 + this.state.faceAverage.surprise*0.50
-			})
-			//fear
-			data.push({
-				"name" : "fear",
-				"value" : this.state.faceAverage.fear
-			})
-			//disgust
-			data.push({
-				"name" : "disgust",
-				"value" : this.state.faceAverage.contempt + this.state.faceAverage.disgust
+				"value" : this.state.emotionAverage.excited
 			})
 			//happy
 			data.push({
 				"name" : "happy",
-				"value" : this.state.emotionAverage.happy*0.5 + this.state.faceAverage.happiness*0.5
+				"value" : this.state.emotionAverage.happy
 			})
 
 			return(
@@ -341,19 +280,6 @@ class App extends Component {
 					onClick = { () => { 
 						if (!this.state.forceEnd){
 							this.setState({forceEnd: true})
-
-							var faceAverage = {}
-							this.state.faceEmotionDataList.map((data, i) => {
-								data.map((data, i) => {
-									if (data.name in faceAverage){
-										faceAverage[data.name] = (faceAverage[data.name] + data.value)/2
-									} else {
-										faceAverage[data.name] = data.value
-									}
-								})
-							})
-							this.setState({faceAverage: faceAverage})
-
 							var emotionAverage = {}
 							this.state.emotionDataList.map((data, i) => {
 								data.map((data, i) => {
@@ -397,13 +323,13 @@ class App extends Component {
 		}
 
 		return (
-			<div className="App" style = {{ padding: 40 }}>
+			<div className = { "App" } style = {{ padding: 40 }}>
 
 				<Grid container>
 					<Grid item xs = {12} >
 						<Grid container justify="center" spacing={16}>
 							<Grid item>
-								<Card style = {{ height: 340 }} className = {card}>
+								<Card style = {{ height: 340 }} >
 									<CardContent>
 										{ this.renderButtons() }
 										{ this.renderPerson() }
@@ -411,15 +337,14 @@ class App extends Component {
 								</Card>
 							</Grid>
 							<Grid item>
-								<Card className = {card} style = {{ maxHeight: 340 }}>
+								<Card style = {{ maxHeight: 340 }}>
 									<CardContent>
-										{ this.renderWebCam() }
 										{ this.renderKeywords() }
 									</CardContent>
 								</Card>
 							</Grid>
 							<Grid item>
-								<Card className = {card}>
+								<Card >
 									<CardContent>
 										{ this.renderBarGraph() }	
 										<p>Textual Emotion Analysis</p>
@@ -431,18 +356,10 @@ class App extends Component {
 					<Grid item xs = {12}>
 						<Grid container justify="center" spacing={16}>
 							<Grid item >
-								<Card className = {card}>
+								<Card >
 									<CardContent>
 										{ this.renderLineGraph() }
 										<p>Textual Sentimental Analysis</p>
-									</CardContent>
-								</Card>
-							</Grid>
-							<Grid item >
-								<Card className = {card}>
-									<CardContent>
-										{ this.renderPieGraph() }
-										<p>Visual Emotion Analysis</p>
 									</CardContent>
 								</Card>
 							</Grid>
