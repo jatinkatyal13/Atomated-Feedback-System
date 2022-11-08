@@ -11,7 +11,7 @@
     "react-chat-ui": "^0.3.0",
     "react-dom": "^16.2.0",
     "react-materialize": "^1.1.2",
-    "react-scripts": "1.1.0",
+    "react-scripts": "5.0.1",
     "react-scrollbar": "^0.5.1",
     "react-webcam": "^0.2.0",
     "recharts": "^1.0.0-beta.9"
